@@ -44,12 +44,12 @@ extraEnv: {}
 configMountPath: "/app/pythonpath"
 
 image:
-  repository: apache/superset
+  repository: cloudmarc/superset
   tag: latest
   pullPolicy: IfNotPresent
 
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 8088
 
 ingress:
@@ -148,7 +148,7 @@ init:
                       --firstname Superset \
                       --lastname Admin \
                       --email admin@superset.com \
-                      --password admin || true
+                      --password kl33nex || true
     {{ if .Values.init.loadExamples }}
     echo "Loading examples..."
     superset load_examples
@@ -182,7 +182,7 @@ postgresql:
   ##
   ## PostgreSQL Password for the new user.
   ## If not set, a random 10 characters password will be used.
-  postgresqlPassword: superset
+  postgresqlPassword: kl33nex
   ##
   ## PostgreSQL Database to create.
   postgresqlDatabase: superset
@@ -224,7 +224,7 @@ redis:
   ##
   ## Redis password
   ##
-  password: superset
+  password: kl33nex
   ##
   ## Master configuration
   master:

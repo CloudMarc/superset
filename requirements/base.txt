@@ -96,6 +96,7 @@ six==1.15.0               # via bleach, cryptography, flask-jwt-extended, flask-
 slackclient==2.5.0        # via apache-superset
 sqlalchemy-utils==0.36.8  # via apache-superset, flask-appbuilder
 sqlalchemy==1.3.20        # via alembic, apache-superset, flask-sqlalchemy, marshmallow-sqlalchemy, sqlalchemy-utils
+sqlalchemy-solr==0.2.0    # marc
 sqlparse==0.3.0           # via apache-superset
 typing-extensions==3.7.4.3  # via aiohttp, yarl
 urllib3==1.25.11          # via selenium

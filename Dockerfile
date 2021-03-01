@@ -29,6 +29,7 @@ RUN mkdir /app \
             libpq-dev \
             libsasl2-dev \
             libecpg-dev \
+            vim \
         && rm -rf /var/lib/apt/lists/*
 
 # First, we just wanna install requirements, which will allow us to utilize the cache
@@ -36,11 +37,15 @@ RUN mkdir /app \
 COPY ./requirements/*.txt  /app/requirements/
 COPY setup.py MANIFEST.in README.md /app/
 COPY superset-frontend/package.json /app/superset-frontend/
+COPY fsql/ /app/fsql/
+RUN cd /app/fsql \
+    && python setup.py bdist_wheel \
+    && pip install --force-reinstall dist/*.whl
+
 RUN cd /app \
     && mkdir -p superset/static \
     && touch superset/static/version_info.json \
     && pip install --no-cache -r requirements/local.txt
-
 
 ######################################################################
 # Node stage to deal with static asset construction
