@@ -18,7 +18,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { styled, t } from '@superset-ui/core';
-import { Collapse } from 'src/common/components';
+import Collapse from 'src/common/components/Collapse';
 import {
   ColumnOption,
   MetricOption,
@@ -27,8 +27,11 @@ import {
 } from '@superset-ui/chart-controls';
 import { debounce } from 'lodash';
 import { matchSorter, rankings } from 'match-sorter';
-import { ExploreActions } from '../actions/exploreActions';
+import { FAST_DEBOUNCE } from 'src/constants';
+import { ExploreActions } from 'src/explore/actions/exploreActions';
 import Control from './Control';
+import DatasourcePanelDragWrapper from './DatasourcePanel/DatasourcePanelDragWrapper';
+import { DatasourcePanelDndType } from './DatasourcePanel/types';
 
 interface DatasourceControl extends ControlConfig {
   datasource?: DatasourceMeta;
@@ -104,6 +107,7 @@ export default function DataSourcePanel({
   actions,
 }: Props) {
   const { columns, metrics } = datasource;
+  const [inputValue, setInputValue] = useState('');
   const [lists, setList] = useState({
     columns,
     metrics,
@@ -117,30 +121,42 @@ export default function DataSourcePanel({
     setList({
       columns: matchSorter(columns, value, {
         keys: [
-          'verbose_name',
-          'column_name',
           {
-            key: 'description',
+            key: 'verbose_name',
             threshold: rankings.CONTAINS,
           },
           {
-            key: 'expression',
+            key: 'column_name',
             threshold: rankings.CONTAINS,
+          },
+          {
+            key: item =>
+              [item.description, item.expression].map(
+                x => x?.replace(/[_\n\s]+/g, ' ') || '',
+              ),
+            threshold: rankings.CONTAINS,
+            maxRanking: rankings.CONTAINS,
           },
         ],
         keepDiacritics: true,
       }),
       metrics: matchSorter(metrics, value, {
         keys: [
-          'verbose_name',
-          'metric_name',
           {
-            key: 'description',
+            key: 'verbose_name',
             threshold: rankings.CONTAINS,
           },
           {
-            key: 'expression',
+            key: 'metric_name',
             threshold: rankings.CONTAINS,
+          },
+          {
+            key: item =>
+              [item.description, item.expression].map(
+                x => x?.replace(/[_\n\s]+/g, ' ') || '',
+              ),
+            threshold: rankings.CONTAINS,
+            maxRanking: rankings.CONTAINS,
           },
         ],
         keepDiacritics: true,
@@ -149,13 +165,14 @@ export default function DataSourcePanel({
           String(a.rankedValue).localeCompare(b.rankedValue),
       }),
     });
-  }, 200);
+  }, FAST_DEBOUNCE);
 
   useEffect(() => {
     setList({
       columns,
       metrics,
     });
+    setInputValue('');
   }, [columns, datasource, metrics]);
 
   const metricSlice = lists.metrics.slice(0, 50);
@@ -166,8 +183,10 @@ export default function DataSourcePanel({
       <input
         type="text"
         onChange={evt => {
+          setInputValue(evt.target.value);
           search(evt.target.value);
         }}
+        value={inputValue}
         className="form-control input-md"
         placeholder={t('Search Metrics & Columns')}
       />
@@ -187,7 +206,12 @@ export default function DataSourcePanel({
             </div>
             {metricSlice.map(m => (
               <LabelContainer key={m.metric_name} className="column">
-                <MetricOption metric={m} showType />
+                <DatasourcePanelDragWrapper
+                  metricOrColumnName={m.metric_name}
+                  type={DatasourcePanelDndType.METRIC}
+                >
+                  <MetricOption metric={m} showType />
+                </DatasourcePanelDragWrapper>
               </LabelContainer>
             ))}
           </Collapse.Panel>
@@ -200,7 +224,12 @@ export default function DataSourcePanel({
             </div>
             {columnSlice.map(col => (
               <LabelContainer key={col.column_name} className="column">
-                <ColumnOption column={col} showType />
+                <DatasourcePanelDragWrapper
+                  metricOrColumnName={col.column_name}
+                  type={DatasourcePanelDndType.COLUMN}
+                >
+                  <ColumnOption column={col} showType />
+                </DatasourcePanelDragWrapper>
               </LabelContainer>
             ))}
           </Collapse.Panel>

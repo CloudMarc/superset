@@ -19,7 +19,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import columnType from 'src/explore/propTypes/columnType';
-import { DraggableOptionControlLabel } from 'src/explore/components/OptionControls';
+import { OptionControlLabel } from 'src/explore/components/OptionControls';
 import { OPTION_TYPES } from 'src/explore/components/optionTypes';
 import AdhocMetricOption from './AdhocMetricOption';
 import AdhocMetric from './AdhocMetric';
@@ -56,10 +56,10 @@ export default function MetricDefinitionValue({
     savedMetrics.find(metric => metric.metric_name === metricName);
 
   let savedMetric;
-  if (option.metric_name) {
-    savedMetric = option;
-  } else if (typeof option === 'string') {
+  if (typeof option === 'string') {
     savedMetric = getSavedMetricByName(option);
+  } else if (option.metric_name) {
+    savedMetric = option;
   }
 
   if (option instanceof AdhocMetric || savedMetric) {
@@ -83,7 +83,7 @@ export default function MetricDefinitionValue({
   }
   if (typeof option === 'string') {
     return (
-      <DraggableOptionControlLabel
+      <OptionControlLabel
         label={option}
         onRemove={onRemoveMetric}
         onMoveLabel={onMoveLabel}

@@ -17,7 +17,8 @@
  * under the License.
  */
 import React, { CSSProperties } from 'react';
-import { Alert, ButtonGroup } from 'react-bootstrap';
+import ButtonGroup from 'src/components/ButtonGroup';
+import Alert from 'src/components/Alert';
 import ProgressBar from 'src/common/components/ProgressBar';
 import moment from 'moment';
 import { RadioChangeEvent } from 'antd/lib/radio';
@@ -99,6 +100,23 @@ const MonospaceDiv = styled.div`
   white-space: pre-wrap;
 `;
 
+const ResultSetControls = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: ${({ theme }) => 2 * theme.gridUnit}px 0;
+  position: fixed;
+`;
+
+const ResultSetButtons = styled.div`
+  display: grid;
+  grid-auto-flow: column;
+  padding-right: ${({ theme }) => 2 * theme.gridUnit}px;
+`;
+
+const ResultSetErrorMessage = styled.div`
+  padding-top: ${({ theme }) => 4 * theme.gridUnit}px;
+`;
+
 export default class ResultSet extends React.PureComponent<
   ResultSetProps,
   ResultSetState
@@ -158,9 +176,11 @@ export default class ResultSet extends React.PureComponent<
     this.handleExploreBtnClick = this.handleExploreBtnClick.bind(this);
   }
 
-  componentDidMount() {
+  async componentDidMount() {
     // only do this the first time the component is rendered/mounted
     this.reRunQueryIfSessionTimeoutErrorOnMount();
+    const userDatasetsOwned = await this.getUserDatasets();
+    this.setState({ userDatasetOptions: userDatasetsOwned });
   }
 
   UNSAFE_componentWillReceiveProps(nextProps: ResultSetProps) {
@@ -295,7 +315,7 @@ export default class ResultSet extends React.PureComponent<
     });
   };
 
-  handleSaveDatasetModalSearch = async (searchText: string) => {
+  getUserDatasets = async (searchText = '') => {
     // Making sure that autocomplete input has a value before rendering the dropdown
     // Transforming the userDatasetsOwned data for SaveModalComponent)
     const appContainer = document.getElementById('app');
@@ -326,15 +346,18 @@ export default class ResultSet extends React.PureComponent<
         endpoint: '/api/v1/dataset',
       })(`q=${queryParams}`);
 
-      const userDatasetsOwned = response.result.map(
-        (r: { table_name: string; id: number }) => ({
-          value: r.table_name,
-          datasetId: r.id,
-        }),
-      );
-
-      this.setState({ userDatasetOptions: userDatasetsOwned });
+      return response.result.map((r: { table_name: string; id: number }) => ({
+        value: r.table_name,
+        datasetId: r.id,
+      }));
     }
+
+    return null;
+  };
+
+  handleSaveDatasetModalSearch = async (searchText: string) => {
+    const userDatasetsOwned = await this.getUserDatasets(searchText);
+    this.setState({ userDatasetOptions: userDatasetsOwned });
   };
 
   handleFilterAutocompleteOption = (
@@ -410,7 +433,7 @@ export default class ResultSet extends React.PureComponent<
           saveModalAutocompleteValue.length === 0);
 
       return (
-        <div className="ResultSetControls">
+        <ResultSetControls>
           <SaveDatasetModal
             visible={showSaveDatasetModal}
             onOk={this.handleSaveInDataset}
@@ -429,7 +452,7 @@ export default class ResultSet extends React.PureComponent<
             filterAutocompleteOption={this.handleFilterAutocompleteOption}
             onChangeAutoComplete={this.handleOnChangeAutoComplete}
           />
-          <div className="ResultSetButtons">
+          <ResultSetButtons>
             {this.props.visualize &&
               this.props.database &&
               this.props.database.allows_virtual_table_explore && (
@@ -446,7 +469,7 @@ export default class ResultSet extends React.PureComponent<
                 buttonSize="small"
                 href={`/superset/csv/${this.props.query.id}`}
               >
-                <i className="fa fa-file-text-o" /> {t('.CSV')}
+                <i className="fa fa-file-text-o" /> {t('Download to CSV')}
               </Button>
             )}
 
@@ -455,11 +478,11 @@ export default class ResultSet extends React.PureComponent<
               wrapped={false}
               copyNode={
                 <Button buttonSize="small">
-                  <i className="fa fa-clipboard" /> {t('Clipboard')}
+                  <i className="fa fa-clipboard" /> {t('Copy to Clipboard')}
                 </Button>
               }
             />
-          </div>
+          </ResultSetButtons>
           {this.props.search && (
             <input
               type="text"
@@ -469,10 +492,10 @@ export default class ResultSet extends React.PureComponent<
               placeholder={t('Filter results')}
             />
           )}
-        </div>
+        </ResultSetControls>
       );
     }
-    return <div className="noControls" />;
+    return <div />;
   }
 
   render() {
@@ -492,11 +515,11 @@ export default class ResultSet extends React.PureComponent<
     }
 
     if (query.state === 'stopped') {
-      return <Alert bsStyle="warning">Query was stopped</Alert>;
+      return <Alert type="warning" message={t('Query was stopped')} />;
     }
     if (query.state === 'failed') {
       return (
-        <div className="result-set-error-message">
+        <ResultSetErrorMessage>
           <ErrorMessageWithStackTrace
             title={t('Database error')}
             error={query?.errors?.[0]}
@@ -505,7 +528,7 @@ export default class ResultSet extends React.PureComponent<
             link={query.link}
             source="sqllab"
           />
-        </div>
+        </ResultSetErrorMessage>
       );
     }
     if (query.state === 'success' && query.ctas) {
@@ -516,31 +539,36 @@ export default class ResultSet extends React.PureComponent<
       }
       return (
         <div>
-          <Alert bsStyle="info">
-            {t(object)} [
-            <strong>
-              {tempSchema ? `${tempSchema}.` : ''}
-              {tempTable}
-            </strong>
-            ] {t('was created')} &nbsp;
-            <ButtonGroup>
-              <Button
-                buttonSize="small"
-                className="m-r-5"
-                onClick={() => this.popSelectStar(tempSchema, tempTable)}
-              >
-                {t('Query in a new tab')}
-              </Button>
-              <ExploreCtasResultsButton
-                // @ts-ignore Redux types are difficult to work with, ignoring for now
-                table={tempTable}
-                schema={tempSchema}
-                dbId={exploreDBId}
-                database={this.props.database}
-                actions={this.props.actions}
-              />
-            </ButtonGroup>
-          </Alert>
+          <Alert
+            type="info"
+            message={
+              <>
+                {t(object)} [
+                <strong>
+                  {tempSchema ? `${tempSchema}.` : ''}
+                  {tempTable}
+                </strong>
+                ] {t('was created')} &nbsp;
+                <ButtonGroup>
+                  <Button
+                    buttonSize="small"
+                    className="m-r-5"
+                    onClick={() => this.popSelectStar(tempSchema, tempTable)}
+                  >
+                    {t('Query in a new tab')}
+                  </Button>
+                  <ExploreCtasResultsButton
+                    // @ts-ignore Redux types are difficult to work with, ignoring for now
+                    table={tempTable}
+                    schema={tempSchema}
+                    dbId={exploreDBId}
+                    database={this.props.database}
+                    actions={this.props.actions}
+                  />
+                </ButtonGroup>
+              </>
+            }
+          />
         </div>
       );
     }
@@ -572,7 +600,7 @@ export default class ResultSet extends React.PureComponent<
       }
       if (data && data.length === 0) {
         return (
-          <Alert bsStyle="warning">{t('The query returned no data')}</Alert>
+          <Alert type="warning" message={t('The query returned no data')} />
         );
       }
     }
@@ -580,8 +608,7 @@ export default class ResultSet extends React.PureComponent<
       if (query.isDataPreview) {
         return (
           <Button
-            buttonSize="sm"
-            className="fetch"
+            buttonSize="small"
             buttonStyle="primary"
             onClick={() =>
               this.reFetchQueryResults({
@@ -597,8 +624,7 @@ export default class ResultSet extends React.PureComponent<
       if (query.resultsKey) {
         return (
           <Button
-            buttonSize="sm"
-            className="fetch"
+            buttonSize="small"
             buttonStyle="primary"
             onClick={() => this.fetchResults(query)}
           >
@@ -636,7 +662,7 @@ export default class ResultSet extends React.PureComponent<
         <div>{!progressBar && <Loading position="normal" />}</div>
         <QueryStateLabel query={query} />
         <div>
-          {progressMsg && <Alert bsStyle="success">{progressMsg}</Alert>}
+          {progressMsg && <Alert type="success" message={progressMsg} />}
         </div>
         <div>{progressBar}</div>
         <div>{trackingUrl}</div>
